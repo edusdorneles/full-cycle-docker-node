@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  nginx:
+    build:
+      context: nginx
+    container_name: nginx
+    ports:
+      - 8080:80
+    networks:
+      - reverse-proxy
+    depends_on:
+      - app
+      - db
+
+  app:
+    build:
+      context: node
+    container_name: app
+    entrypoint: sh -c "dockerize -wait tcp://db:3306 -timeout 20s && npm install && npm run start"
+    volumes:
+      - ./node:/usr/src/app
+    networks:
+      - reverse-proxy
+    depends_on:
+      - db
+  
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+      - ./mysql:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=node
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - reverse-proxy
+
+networks:
+  reverse-proxy:
+    driver: bridge
